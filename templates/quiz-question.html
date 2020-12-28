@@ -1,0 +1,21 @@
+<div class="status">
+    <div class="question-number">${questionNum}/10</div>
+    <div class="score">${score}/10</div>
+</div>
+
+<form class="question-box" method="POST" action="">
+    <div class="question">${question}</div>
+        <div class="answers">
+            ${answers.map(answer => `
+                <label for="">
+                    <input name="answer" type="radio" autofocus value="${answer}">${answer}
+                </label>
+            `).join('')}
+        </div>
+    </div>
+    
+    <a href="">
+        <button>Submit</button>
+    </a>
+</form>
+
