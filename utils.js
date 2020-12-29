@@ -34,8 +34,19 @@ function shuffle(array) {
     return array;
   }
 
+  function questionRuling(playerAnswer, correctAnswer) {
+    let ruling; 
+    if(playerAnswer === correctAnswer){
+        ruling = '/partials/correct'
+    } else {
+        ruling = '/partials/incorrect'
+    }
+    return ruling
+}
+
 
   module.exports = {
     createArrayOfAnswers, 
-    shuffle
+    shuffle, 
+    questionRuling
   }
