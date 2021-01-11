@@ -1,3 +1,4 @@
+const { Progress} = require('./models');
 
 function createArrayOfAnswers(object){
 
@@ -44,9 +45,26 @@ function shuffle(array) {
     return ruling
 }
 
+const layout = {
+    partials: {
+        header: '/partials/header',
+        footer: '/partials/footer'
+    }    
+};
+
+async function getSavedData(username){
+    const savedData = await Progress.findAll({
+        where: {
+            username
+        }
+    })
+    return savedData;
+}
 
   module.exports = {
     createArrayOfAnswers, 
     shuffle, 
-    questionRuling
+    questionRuling, 
+    layout, 
+    getSavedData
   }

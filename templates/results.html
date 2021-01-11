@@ -1,3 +1,24 @@
-<h1>{score}</h1>
-<h2>{comment}</h2>
-<div class="missed-questions">{incorrectAnswers}</div>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Final Score</title>
+</head>
+<body>
+<h1>${score} out of ${quizLength}</h1>
+<h2>${comment}</h2>
+<div class="missed-questions">
+    <ul>
+        ${incorrectAnswers.map(answer => {
+            `<li>
+                <p>You selected: ${answer.playerAnswer}</p>
+                <p>But the correct answer is: ${answer.correctAnswer}</p>
+            </li>`
+        })
+        .join('')}
+    </ul>
+</div>
+</body>
+</html>

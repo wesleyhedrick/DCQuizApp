@@ -1,5 +1,5 @@
 const { Questions } = require('../models');
-const { createArrayOfAnswers } = require('../utils')
+const { createArrayOfAnswers, shuffle, layout} = require('../utils')
 
 //PLAYERS CHOOSES WHAT KIND OF QUIZ THEY WANT
 const quizSettings = async (req, res) => {
@@ -7,7 +7,13 @@ const quizSettings = async (req, res) => {
         attributes: [
             'id'
         ]
-    })
+})
+
+    //STORE QUIZ LENGTH IN SESSION TO LATER FIGURE OUT GRADE PERCENTAGE.
+    req.session.quizLength = questionIds.length;    
+    
+    //MAKE EMPTY ARRAY TO CONTAIN PLAYERS INCORRECT ANSWERS
+    req.session.incorrectAnswers = []
 
     //Put just the ids in session storage
     req.session.questionIds = [];
@@ -16,33 +22,35 @@ const quizSettings = async (req, res) => {
     req.session.questionNum = 1;
     questionIds
         .forEach(item => req.session.questionIds
-            .push(item.dataValues.id));
+        .push(item.dataValues.id));
+    
+    req.session.questionIds = shuffle(req.session.questionIds);
+    
     res.redirect('quiz/questions')
 }
 
 const quizQuestions = async (req, res) => {
     //GET LAST INDEX OF QUESTION NUMBERS
-    const indexOfQuestionToBeAsked = req.session.questionIds.length - 1;
-
-    //STORE QUIZ LENGTH IN SESSION TO LATER FIGURE OUT GRADE PERCENTAGE.
-    req.session.quizLength = req.session.questionIds.length;
-    //MAKE EMPTY ARRAY TO CONTAIN PLAYERS INCORRECT ANSWERS
-    req.session.incorrectAnswers = []
-
-    console.log('here is your last index', indexOfQuestionToBeAsked)
-    console.log('Here is what is stored in session', req.session.questionIds)
+    const last = req.session.questionIds.length - 1;    
     
     questionObject = await Questions.findAll({
         where: {
-            id: req.session.questionIds[indexOfQuestionToBeAsked]
+            id: req.session.questionIds[last]
         }
     });
+    
 
     //REMOVE QUESTION ID FROM LIST OF IDS
-    req.session.questionIds.pop();
-    
+    let thisQuestionId = req.session.questionIds.pop();
+    req.session.thisQuestionId = thisQuestionId;
+
     //Get first index of array because sequelize returns array of objects unfortunately.
     questionObject = questionObject[0];
+    req.session.questionObject = questionObject;
+
+    console.log('Here is your question object in its entirety', questionObject)
+    console.log('Here is your question id', questionObject.id)
+
     //SHUFFLE THE ANSWERS IN THE QUESTION OBJECT
     let answers = createArrayOfAnswers(questionObject);
     //STORE QUESTIONOBJECT.QUESTION IN THE MORE READABLE VARIABLE: QUESTION
@@ -59,7 +67,8 @@ const quizQuestions = async (req, res) => {
             questionNum, 
             score
 
-        }
+        }, 
+        ...layout
     })
 }
 
@@ -68,26 +77,42 @@ const quizFeedback = async (req, res) => {
     const correctAnswer = req.session.correctAnswer;
     let next;
     let ruling;
+    let wrongAnswer;
+
     //INCREMENT QUESTION NUM
     req.session.questionNum += 1;
     
+    //Determine which wrong answer the player chose. This is so that
+    //progress can be saved an incorrect answers pulled up again from
+    //the database.
+    questionObject = req.session.questionObject
+    for (k in questionObject) {
+        if(questionObject[k]===playerAnswer){
+            wrongAnswer = k;
+        }
+    }
 
     //EVALUATE ANSWER. ADJUST SCORE. SELECT THE APPROPRIATE PARTIALS FILE
     if(playerAnswer === correctAnswer){
         req.session.score +=1
         ruling = '/partials/correct'
     } else {
-        req.session.incorrectAnswers.push(playerAnswer);
+        missedQuestionId = req.session.thisQuestionId;
+        
+        req.session.incorrectAnswers.push({missedQuestionId,wrongAnswer});
         ruling = '/partials/incorrect'
     }
 
 
-    //Is this the last question? Use req.session
+    //DECIDE IF ITS THE LAST QUESTION. AND RENDER THE APPROPRIATE PAGE
+    //IF LAST, NEXT = GO-TO-END
     if(req.session.questionIds.length === 0){
         next = '/partials/go-to-end';
     } else {
         next = '/partials/next-question'
     }
+
+    //RENDER QUESTION FEEDBACK PAGE
     res.render('question-feedback', {
         locals: {
             playerAnswer,
@@ -95,38 +120,19 @@ const quizFeedback = async (req, res) => {
         },
         partials: {
             ruling,
-            next
+            next, 
+            header: '/partials/header',
+            footer: '/partials/footer'
         }
     });
 }
 
-const results = () => {
-    let score = req.session.score;
-    let comment; 
-    let incorrectAnswers = req.session.incorrectAnswers;
-    //EVALUATE HOW WELL PLAYER DID BASED ON CORRECT ANSWER/QUIZ LENGTH
-    if(score/quizLength === 1) {
-        comment = 'Perfect score! Either you\'re gifted or the hard work is paying off. Keep it up.';
-    } else if (score/quizLength > .8){ 
-        comment = 'This was a solid performance! Keep up the good work.'
-    } else {
-        comment = 'You need to work harder'
-    }
-
-    res.render('results', {
-        locals: {
-            score,
-            comment,
-            incorrectAnswers
-        }
-    })
-}
     
 module.exports = {
     quizSettings, 
     quizQuestions,
     quizFeedback,
-    results
+    
 }
 
 
